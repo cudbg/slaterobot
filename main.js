@@ -112,6 +112,7 @@ async function scrapeSlate(_, [uni, password]) {
   console.log(names.slice(0,2))
 
   async function download_user_id(id, path) {
+    // Creates a new browser tab and downloads
     let url = `https://apply.engineering.columbia.edu/manage/reader/?id=${id}`;
     let user_page = await context.newPage();
     user_page.on('dialog', async dialog => { await dialog.accept(); });
@@ -127,6 +128,8 @@ async function scrapeSlate(_, [uni, password]) {
     await user_page.close()
   }
 
+  // This goes block-wise through the list of applicants
+  // and downloads 10 at a time
   let i = 0;
   let block = 10;
   for (let outer = 0; outer < user_ids.length; outer += block) {
