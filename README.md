@@ -4,6 +4,11 @@ Slate is hard to use.  This will log in, and auto-download applicant PDFs for yo
 
 Install
 
+* [Install node](https://nodejs.org/en/download/)
+* clone git repo and install package
+
+    git clone git@github.com:sirrice/slaterobot.git
+    cd ./slaterobot/
     npm install .
 
 Run
