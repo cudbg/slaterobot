@@ -7,9 +7,11 @@ Install
 * [Install node](https://nodejs.org/en/download/)
 * clone git repo and install package
 
+```bash
     git clone git@github.com:sirrice/slaterobot.git
     cd ./slaterobot/
     npm install .
+```    
 
 Run
 
