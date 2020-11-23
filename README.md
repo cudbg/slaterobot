@@ -20,6 +20,6 @@ Run
 
 
     # Then, after it logs in to Slate, it will wait for you to filter
-    # the list of applicants in the search tab.  Once you are happy 
+    # the list of applicants in the "search" tab.  Once you are happy 
     # press ENTER to download PDFs for all applicants on the page.
     

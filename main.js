@@ -97,7 +97,7 @@ async function scrapeSlate(_, [uni, password]) {
 
   await page.goto("https://apply.engineering.columbia.edu/manage/reader/?tab=browse")
   await (new Promise(res => setTimeout(res, 1500)))
-  await askQuestion("Filter and navigate to search results page.  Press ENTER to start downloading.")
+  await askQuestion("Navigate to the search results tab and filter for applicants to download.  Press ENTER to start downloading.")
 
   let user_ids = [];
   let names = [];
