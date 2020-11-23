@@ -13,7 +13,7 @@ Install
     npm install .
 ```    
 
-Run
+Run to download pdfs into `./downloads/`
 
     node main.js YOURUNI YOURPASSWORD
 
