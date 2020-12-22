@@ -1,7 +1,11 @@
+const csv = require('csv-parser');
 const fs = require("fs");
+const R = require("ramda")
 const fse = require('fs-extra'); // v 5.0.0
 const playwright = require('playwright');
 const readline = require('readline');
+const { finished } = require('stream').promises;
+
 
 functionToExpose = async (strbuf, targetFile) => {
   const str2ab = function _str2ab(str) { // Convert a UTF-8 String to an ArrayBuffer
@@ -57,7 +61,7 @@ pdfDownloader = async ([url, outpath]) => {
 
 }
 
-async function scrapeSlate(_, [uni, password]) {
+async function scrapeSlate(_, [uni, password], getIds) {
 
   const browserType = "chromium";
   const browser = await playwright[browserType].launch({ 
@@ -96,35 +100,33 @@ async function scrapeSlate(_, [uni, password]) {
   console.log("navigating to search page")
 
   await page.goto("https://apply.engineering.columbia.edu/manage/reader/?tab=browse")
-  await (new Promise(res => setTimeout(res, 1500)))
-  await askQuestion("Navigate to the search results tab and filter for applicants to download.  Press ENTER to start downloading.")
 
-  let user_ids = [];
-  let names = [];
-  let trs = await page.$$(".reader_dashboard_content tbody tr[data-id]")
-  console.log("Got " + trs.length + " rows from search");
-  for (let i = 0; i < Math.min(trs.length, 10); i++) {
-    user_ids.push(await trs[i].getAttribute("data-id"));
-    names.push(await trs[i].$eval("xpath=./td[position()=5]", (e) => e.innerText))
-  }
-  console.log("Got " + user_ids.length + " users")
-  console.log(user_ids.slice(0,2))
-  console.log(names.slice(0,2))
+  const uids = await getIds();
 
   async function download_user_id(id, path) {
     // Creates a new browser tab and downloads
-    let url = `https://apply.engineering.columbia.edu/manage/reader/?id=${id}`;
+    //let url = `https://apply.engineering.columbia.edu/manage/reader/?id=${id}`;
+
+    let url = `https://apply.engineering.columbia.edu/manage/lookup/record?id=${id}`
     let user_page = await context.newPage();
     user_page.on('dialog', async dialog => { await dialog.accept(); });
 
-    await user_page.goto(url);
+    try {
+      await user_page.goto(url);
+      await user_page.click("a[data-tab='Application']")
+      await user_page.click("text='Read Application'")
+      await (new Promise(res => setTimeout(res, 1000)))
+      await user_page.click(".reader_header_title");
 
-    await user_page.click(".reader_header_title");
-    let pdf_url_suffix = await user_page.getAttribute("text='Download PDF'", "href");
-    let pdf_url = `https://apply.engineering.columbia.edu/manage/reader/${pdf_url_suffix}`;
-    user_page.exposeFunction("writeABString", functionToExpose);
-    let ret = await user_page.evaluate(pdfDownloader, [pdf_url, path])
-    console.log(ret)
+      let pdf_url_suffix = await user_page.getAttribute("text='Download PDF'", "href");
+      let pdf_url = `https://apply.engineering.columbia.edu/manage/reader/${pdf_url_suffix}`;
+      user_page.exposeFunction("writeABString", functionToExpose);
+      let ret = await user_page.evaluate(pdfDownloader, [pdf_url, path])
+      console.log(ret)
+    } catch(e) {
+      console.log(e)
+      console.log(`Failed on ${path} ${url}`)
+    }
     await user_page.close()
   }
 
@@ -132,10 +134,10 @@ async function scrapeSlate(_, [uni, password]) {
   // and downloads 10 at a time
   let i = 0;
   let block = 10;
-  for (let outer = 0; outer < user_ids.length; outer += block) {
+  for (let outer = 0; outer < uids.length; outer += block) {
     let promises = [];
-    for (let i = 0; i < Math.min(block, user_ids.length-outer); i++) {
-      let [id, name] = [user_ids[outer+i], names[outer+i]];
+    for (let i = 0; i < Math.min(block, uids.length-outer); i++) {
+      let {id, name} = uids[outer+i];
       let applicant_name = name.replace(/[,()]+/g, " ").replace(/\s+/g, "_");
       let path =`./downloads/${applicant_name}.pdf`;
       console.log("downloading app # ", i, id, path);
@@ -160,13 +162,80 @@ function askQuestion(query) {
   }))
 }
 
+async function getIdsFromSlateSearch() {
+  await (new Promise(res => setTimeout(res, 1500)))
+  await askQuestion("Navigate to the search results tab and filter for applicants to download.  Press ENTER to start downloading.")
+
+  let user_ids = [];
+  let names = [];
+  let trs = await page.$$(".reader_dashboard_content tbody tr[data-id]")
+  console.log("Got " + trs.length + " rows from search");
+  for (let i = 0; i < Math.min(trs.length, 10); i++) {
+    user_ids.push(await trs[i].getAttribute("data-id"));
+    names.push(await trs[i].$eval("xpath=./td[position()=5]", (e) => e.innerText))
+  }
+  console.log("Got " + user_ids.length + " users")
+  console.log(user_ids.slice(0,2))
+  console.log(names.slice(0,2))
+  return R.map(([id, name]) => {
+    return { id, name }
+  }, R.zip(user_ids, names))
+}
+
+async function getIdsFromCSV(path) {
+  let me = async () => {
+    return Promise.resolve(R.map((d) => {
+        return {
+          id: d.ID,
+          name: d.Name
+        }
+    }, records));
+  }
+  let records = [];
+
+  const parser = fs
+    .createReadStream(path)
+    .pipe(csv());
+  parser.on('readable', function(){
+    let record;
+    while (record = parser.read()) {
+      records.push(record)
+    }
+  });
+  await finished(parser);
+  return me;
+}
+
 (async () => {
-  if (process.length < 4) {
-    console.log("node main.js YOURUNI YOURPASSWORD")
+
+  const idx = R.findIndex((s) => R.endsWith("main.js", s), process.argv);
+  const argv = process.argv.slice(idx+1)
+  if (idx == -1 || argv.length < 2 || argv[0] == "--help" || argv[0] == "-h") {
+    console.log(`  node main.js YOURUNI YOURPASSWORD [slate CSV file]")
+
+  Use Chromium headless browser to scrape Slate and download applicant 
+  PDFs into ./downloads/
+
+  slate CSV file: path to exported CSV file from slate's SQL search query.
+                  make sure Name and ID are exported fields in the query.
+
+                  if CSV file is not specified, program will navigate
+                  to Slate Reader's search page and wait for you to filter
+                  for your desired applicants before scraping.
+`)
     return;
   }
 
-  let uni, password = [process.argv[2], process.argv[3]];
+
+  let [uni, password] = [argv[0], argv[1]];
   console.log(uni, password)
-  scrapeSlate(uni, password);
+
+  let getIds =  getIdsFromSlateSearch
+  if (argv.length > 2) {
+    let csvPath = argv[2];
+    console.log(`reading from ${csvPath}`)
+    getIds = await getIdsFromCSV(csvPath)
+  } 
+
+  scrapeSlate(uni, password, getIds);
 })();
