@@ -4,7 +4,8 @@ const R = require("ramda")
 const fse = require('fs-extra'); // v 5.0.0
 const playwright = require('playwright');
 const readline = require('readline');
-const { finished } = require('stream').promises;
+const { finished } = require('stream')
+const { promisify } = require('util')
 
 
 functionToExpose = async (strbuf, targetFile) => {
@@ -80,6 +81,9 @@ async function scrapeSlate(_, [uni, password], getIds) {
 
 
   await page.goto('https://apply.engineering.columbia.edu/manage')
+  console.log(uni, password)
+
+  await page.waitForSelector("#username")
   await page.waitForSelector("#password")
   await page.fill("#username", uni); 
   await page.fill("#password", password);
@@ -90,6 +94,7 @@ async function scrapeSlate(_, [uni, password], getIds) {
   await (new Promise(res => setTimeout(res, 1000)))
 
 
+  console.log(page.mainFrame().childFrames())
   let duo_frame = page.mainFrame().childFrames()[0]; 
   await duo_frame.waitForLoadState("domcontentloaded")
   await duo_frame.waitForLoadState("networkidle")
@@ -113,9 +118,20 @@ async function scrapeSlate(_, [uni, password], getIds) {
 
     try {
       await user_page.goto(url);
-      await user_page.click("a[data-tab='Application']")
-      await user_page.click("text='Read Application'")
       await (new Promise(res => setTimeout(res, 1000)))
+      await user_page.click("a[data-tab='Application']")
+      await (new Promise(res => setTimeout(res, 500)))
+      await user_page.click("text='Read Application'")
+      await (new Promise(res => setTimeout(res, 500)))
+      await user_page.selectOption("#workflow", {index: 1})
+      await (new Promise(res => setTimeout(res, 500)))
+      await user_page.click(".dialog_host form button.default")
+      //await user_page.click("text='Download PDF'")
+      //await user_page.click("text='Download'")
+      //await user_page.click("#workflow");
+      //await user_page.click("text='Default Workflow (current bin: PhD Committee Review #2)'")
+      //await user_page.click("text='button'")
+      await (new Promise(res => setTimeout(res, 2000)))
       await user_page.click(".reader_header_title");
 
       let pdf_url_suffix = await user_page.getAttribute("text='Download PDF'", "href");
@@ -133,7 +149,7 @@ async function scrapeSlate(_, [uni, password], getIds) {
   // This goes block-wise through the list of applicants
   // and downloads 10 at a time
   let i = 0;
-  let block = 10;
+  let block = 5;
   for (let outer = 0; outer < uids.length; outer += block) {
     let promises = [];
     for (let i = 0; i < Math.min(block, uids.length-outer); i++) {
@@ -202,7 +218,7 @@ async function getIdsFromCSV(path) {
       records.push(record)
     }
   });
-  await finished(parser);
+  await promisify(finished)(parser);
   return me;
 }
 
@@ -228,7 +244,6 @@ async function getIdsFromCSV(path) {
 
 
   let [uni, password] = [argv[0], argv[1]];
-  console.log(uni, password)
 
   let getIds =  getIdsFromSlateSearch
   if (argv.length > 2) {
@@ -237,5 +252,5 @@ async function getIdsFromCSV(path) {
     getIds = await getIdsFromCSV(csvPath)
   } 
 
-  scrapeSlate(uni, password, getIds);
+  scrapeSlate(null, [uni, password], getIds);
 })();
