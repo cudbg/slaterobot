@@ -149,7 +149,7 @@ async function scrapeSlate(_, [uni, password], getIds) {
   // This goes block-wise through the list of applicants
   // and downloads 10 at a time
   let i = 0;
-  let block = 5;
+  let block = 10;
   for (let outer = 0; outer < uids.length; outer += block) {
     let promises = [];
     for (let i = 0; i < Math.min(block, uids.length-outer); i++) {
