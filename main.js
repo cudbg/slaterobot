@@ -123,16 +123,17 @@ async function scrapeSlate(_, [uni, password], getIds) {
       await (new Promise(res => setTimeout(res, 500)))
       await user_page.click("text='Read Application'")
       await (new Promise(res => setTimeout(res, 500)))
-      await user_page.selectOption("#workflow", {index: 1})
+      await user_page.click("div.reader_header_title")
+      //await user_page.selectOption("#workflow", {index: 1})
       await (new Promise(res => setTimeout(res, 500)))
-      await user_page.click(".dialog_host form button.default")
+      //await user_page.click(".dialog_host form button.default")
       //await user_page.click("text='Download PDF'")
       //await user_page.click("text='Download'")
       //await user_page.click("#workflow");
       //await user_page.click("text='Default Workflow (current bin: PhD Committee Review #2)'")
       //await user_page.click("text='button'")
-      await (new Promise(res => setTimeout(res, 2000)))
-      await user_page.click(".reader_header_title");
+      //await (new Promise(res => setTimeout(res, 2000)))
+      //await user_page.click(".reader_header_title");
 
       let pdf_url_suffix = await user_page.getAttribute("text='Download PDF'", "href");
       let pdf_url = `https://apply.engineering.columbia.edu/manage/reader/${pdf_url_suffix}`;
@@ -154,6 +155,7 @@ async function scrapeSlate(_, [uni, password], getIds) {
     let promises = [];
     for (let i = 0; i < Math.min(block, uids.length-outer); i++) {
       let {id, name} = uids[outer+i];
+      console.log(id, name)
       let applicant_name = name.replace(/[,()]+/g, " ").replace(/\s+/g, "_");
       let path =`./downloads/${applicant_name}.pdf`;
       console.log("downloading app # ", i, id, path);
