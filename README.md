@@ -17,30 +17,33 @@ Slate is hard to use.  This will log in, and auto-download applicant PDFs for yo
 
 There are two ways to run slaterobot.   In both cases, it will download pdfs into `./downloads/`
 
-1. The following lets you navigate to the list of applicants in the reader/queue and it will scrape and download their applications.
-
 ```bash
-    node main.js YOURUNI YOURPASSWORD
+  > node main.js --help
 
-    # Special characters like $ should be escaped.  e.g., AB\$CD
+  node main.js YOURUNI YOURPASSWORD [slate CSV file]
 
-    # After the script logs in to Columbia, it will first wait for you
-    # to accept Duo on your phone.
+  Use Chromium headless browser to scrape Slate and download applicant
+  PDFs into ./downloads/
 
-    # Then, after it logs in to Slate, it will wait for you to filter
-    # the list of applicants in the "search" tab.  Once you are happy 
-    # press ENTER to download PDFs for all applicants on the page.
+  slate CSV file: path to exported CSV file from slate's SQL search query.
+                  make sure Name and ID are exported fields in the query.
+
+                  if CSV file is not specified, program will navigate
+                  to Slate Reader's search page and wait for you to filter
+                  for your desired applicants before scraping.
 ```
-    
-2. The other option is to pass in a list of applicant names and IDs and slaterobot will download their pdfs.
-  * [create a query](https://apply.engineering.columbia.edu/manage/query/) that matches your conditions.  
-  * Make sure the query exports the applicant's `Name` and `ID`.   
-  * Press "Export" to download the query results as an excel file 
-  * Store it as a CSV.   **Excel will append a control character at the beginning of the file that screws up our parsing, so open a text editor to remove any control characters**
-  * run:
 
-```bash
-    node main.js YOUR UNI YOURPASSWORD applicants.csv
+A few notes on usage
 
-    # After accepting Duo on your phone, you don't need to do anything.
-```
+* Special characters like $ should be escaped.  e.g., AB\$CD
+* the script uses your credentials to log in to Columbia, it will wait for you to accept Duo on your phone.
+* If you gave a CSV file, it will just scrape those.  Make sure they contain a `Name` and `ID` field!
+* Otherwise,program will navigate to Slate Reader's search page and wait for you to filter for your desired applicants.
+  Then press ENTER in the command line to download PDFs for all applicants on the page.
+
+Creating the CSV file
+
+* [Create a query on slate](https://apply.engineering.columbia.edu/manage/query/) that matches your conditions.  
+* Make sure the query exports the applicant's `Name` and `ID`.   
+* Press "Export" to download the query results as an excel file 
+k Store it as a CSV.   **Excel will append a control character at the beginning of the file that screws up our parsing, so open a text editor to remove any control characters**
